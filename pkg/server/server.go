@@ -838,10 +838,7 @@ func (s *Server) handleSystem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get real CPU information
-	cpu, err := s.kubevirtClient.GetVMCPUTopology(namespace, vmName)
-	if err != nil {
-		logger.Warning("Failed to get CPU for VM %s: %v", vmName, err)
-	}
+	procSummary, sysOem := s.processorFields(namespace, vmName)
 
 	// Generate the correct System ID for the response
 	responseSystemID := config.GenerateSystemID(s.currentConfig().SystemIDConvention, namespace, vmName)
@@ -850,7 +847,7 @@ func (s *Server) handleSystem(w http.ResponseWriter, r *http.Request) {
 	system := redfish.ComputerSystem{
 		OdataContext: "/redfish/v1/$metadata#ComputerSystem.ComputerSystem",
 		OdataID:      fmt.Sprintf("/redfish/v1/Systems/%s", responseSystemID),
-		OdataType:    "#ComputerSystem.v1_0_0.ComputerSystem",
+		OdataType:    "#ComputerSystem.v1_15_0.ComputerSystem",
 		OdataEtag:    fmt.Sprintf("W/\"%d\"", time.Now().Unix()), // Simple ETag for versioning
 		ID:           responseSystemID,
 		Name:         vmName, // Name remains vmName
@@ -869,7 +866,8 @@ func (s *Server) handleSystem(w http.ResponseWriter, r *http.Request) {
 		Processors: redfish.Link{
 			OdataID: fmt.Sprintf("/redfish/v1/Systems/%s/Processors", responseSystemID),
 		},
-		ProcessorSummary: processorSummary(cpu),
+		ProcessorSummary: procSummary,
+		Oem:              sysOem,
 		Storage: redfish.Link{
 			OdataID: fmt.Sprintf("/redfish/v1/Systems/%s/Storage", responseSystemID),
 		},
@@ -1060,7 +1058,7 @@ func (s *Server) handleGetVirtualMedia(w http.ResponseWriter, r *http.Request, s
 	virtualMedia := redfish.VirtualMedia{
 		OdataContext:   "/redfish/v1/$metadata#VirtualMedia.VirtualMedia",
 		OdataID:        fmt.Sprintf("/redfish/v1/Systems/%s/VirtualMedia/%s", responseSystemID, mediaID),
-		OdataType:      "#VirtualMedia.v1_0_0.VirtualMedia",
+		OdataType:      "#VirtualMedia.v1_2_0.VirtualMedia",
 		OdataEtag:      fmt.Sprintf("W/\"%d\"", time.Now().Unix()),
 		ID:             mediaID,
 		Name:           fmt.Sprintf("Virtual Media %s", mediaID),
@@ -1355,10 +1353,7 @@ func (s *Server) handleBootUpdate(w http.ResponseWriter, r *http.Request, system
 	}
 
 	// Get real CPU information
-	cpu, err := s.kubevirtClient.GetVMCPUTopology(namespace, vmName)
-	if err != nil {
-		logger.Warning("Failed to get CPU for VM %s: %v", vmName, err)
-	}
+	procSummary, sysOem := s.processorFields(namespace, vmName)
 
 	// Return the updated ComputerSystem resource (Redfish spec requirement)
 	responseSystemID := config.GenerateSystemID(s.currentConfig().SystemIDConvention, namespace, vmName)
@@ -1366,7 +1361,7 @@ func (s *Server) handleBootUpdate(w http.ResponseWriter, r *http.Request, system
 	system := redfish.ComputerSystem{
 		OdataContext: "/redfish/v1/$metadata#ComputerSystem.ComputerSystem",
 		OdataID:      fmt.Sprintf("/redfish/v1/Systems/%s", responseSystemID),
-		OdataType:    "#ComputerSystem.v1_0_0.ComputerSystem",
+		OdataType:    "#ComputerSystem.v1_15_0.ComputerSystem",
 		OdataEtag:    fmt.Sprintf("W/\"%d\"", time.Now().Unix()),
 		ID:           responseSystemID,
 		Name:         vmName,
@@ -1385,7 +1380,8 @@ func (s *Server) handleBootUpdate(w http.ResponseWriter, r *http.Request, system
 		Processors: redfish.Link{
 			OdataID: fmt.Sprintf("/redfish/v1/Systems/%s/Processors", responseSystemID),
 		},
-		ProcessorSummary: processorSummary(cpu),
+		ProcessorSummary: procSummary,
+		Oem:              sysOem,
 		Storage: redfish.Link{
 			OdataID: fmt.Sprintf("/redfish/v1/Systems/%s/Storage", responseSystemID),
 		},

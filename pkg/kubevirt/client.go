@@ -2675,10 +2675,11 @@ type CPUTopology struct {
 func (t CPUTopology) VCPUs() int { return t.Sockets * t.Cores * t.Threads }
 
 // GetVMCPUTopology returns the sockets, cores per socket and threads per core of a VM.
+// On error it returns the zero value, never a guessed topology.
 func (c *Client) GetVMCPUTopology(namespace, name string) (CPUTopology, error) {
 	vm, err := c.GetVM(namespace, name)
 	if err != nil {
-		return CPUTopology{Sockets: 1, Cores: 1, Threads: 1}, fmt.Errorf("failed to get VM %s/%s for CPU lookup: %w", namespace, name, err)
+		return CPUTopology{}, fmt.Errorf("failed to get VM %s/%s for CPU lookup: %w", namespace, name, err)
 	}
 	topo := CPUTopology{Sockets: 1, Cores: 1, Threads: 1}
 	if vm.Spec.Template == nil {
@@ -2695,16 +2696,6 @@ func (c *Client) GetVMCPUTopology(namespace, name string) (CPUTopology, error) {
 	topo.Threads = int(max(cpu.Threads, 1))
 	topo.Model = cpu.Model
 	return topo, nil
-}
-
-// GetVMCPU gets the total vCPU count of a VirtualMachine (sockets x cores x threads).
-func (c *Client) GetVMCPU(namespace, name string) (int, error) {
-	t, err := c.GetVMCPUTopology(namespace, name)
-	if err != nil {
-		logger.Warning("%v", err)
-		return 1, nil // Low default fallback
-	}
-	return t.VCPUs(), nil
 }
 
 // GetVMStorageDetails gets detailed storage information of a VirtualMachine
